@@ -1,0 +1,42 @@
+# -*- coding:utf-8 -*-
+from ctypes import *
+
+# libpafe.hの77行目で定義
+FELICA_POLLING_ANY = 0xffff
+
+def check_pasori():
+    try:
+        libpafe = cdll.LoadLibrary("/usr/local/lib/libpafe.so")
+
+        libpafe.pasori_open.restype = c_void_p
+        pasori = libpafe.pasori_open()
+
+        if pasori is None:
+            print("Pasoriが見つかりません。")
+            return False
+
+        libpafe.pasori_init(pasori)
+
+        libpafe.felica_polling.restype = c_void_p
+        felica = libpafe.felica_polling(pasori, FELICA_POLLING_ANY, 0, 0)
+
+        idm = c_ulonglong()
+        libpafe.felica_get_idm.restype = c_void_p
+        libpafe.felica_get_idm(felica, byref(idm))
+
+        if idm.value == 0:
+            print("カードが読み取れません。")
+            libpafe.free(felica)
+            libpafe.pasori_close(pasori)
+            return False
+        else:
+            print("カードが読み取れました。IDm: %016X" % idm.value)
+            libpafe.free(felica)
+            libpafe.pasori_close(pasori)
+            return True
+    except Exception as e:
+        print("エラーが発生しました:", e)
+        return False
+
+if __name__ == '__main__':
+    check_pasori()
